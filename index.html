@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<title>嵌入式工坊 · 打开课程</title>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;background:#eef5f0;color:#203a30;min-height:100dvh;display:grid;place-items:center;padding:18px;font:16px/1.6 system-ui,"Microsoft YaHei",sans-serif}
+  main{width:min(100%,430px);padding:27px;border:1px solid #d8e4dc;border-radius:18px;background:#fff}
+  h1{font-size:25px;margin:0 0 8px}
+  p{margin:4px 0 16px;color:#4a6255}
+  label{font-weight:600}
+  input,button{display:block;width:100%;padding:10px 12px;margin-top:7px;font:inherit;border-radius:8px}
+  input{border:1px solid #b5c9bd}
+  button{border:0;background:#106247;color:white;margin-top:13px;cursor:pointer}
+  :focus-visible{outline:2px solid #0a6248;outline-offset:3px}
+  #status{margin:10px 0 0;font-size:14px}
+</style>
+</head>
+<body>
+<main>
+  <h1>嵌入式工坊</h1>
+  <p>使用完整的专属链接，或输入访问密钥打开课程。</p>
+  <form id="entry"><label for="access">访问密钥</label><input id="access" type="password" required autocomplete="off" spellcheck="false">
+    <button type="submit">打开课程</button></form>
+  <p role="status" id="status"></p>
+</main>
+<script>
+(() => {
+  const form = document.getElementById('entry');
+  const field = document.getElementById('access');
+  const status = document.getElementById('status');
+  const button = form.querySelector('button');
+  const sessionName = 'embedded-workshop-access:' + location.pathname;
+  const params = new URLSearchParams(location.hash.slice(1));
+  const incoming = params.get('key');
+  let cached;
+  try { cached = sessionStorage.getItem(sessionName); } catch {}
+  async function openCourse(value) {
+    button.disabled = true;
+    try {
+      const key = value.trim();
+      if (!/^[A-Za-z0-9_-]{43}$/.test(key)) throw new Error('key');
+      const bytes = Uint8Array.from(atob(key.replace(/-/g,'+').replace(/_/g,'/') + '='), char => char.charCodeAt(0));
+      status.textContent = '正在打开课程…';
+      const asset = await fetch('./course-3c85de47a0c9956b.bin');
+      if (!asset.ok) throw new Error('network');
+      const payload = new Uint8Array(await asset.arrayBuffer());
+      const secret = await crypto.subtle.importKey('raw',bytes,'AES-GCM',false,['decrypt']);
+      const content = await crypto.subtle.decrypt({name:'AES-GCM',iv:payload.slice(0,12)},secret,payload.slice(12));
+      try { sessionStorage.setItem(sessionName,key); } catch {}
+      if (incoming !== null) history.replaceState(null,'',location.pathname+location.search+'#today');
+      const html = new TextDecoder('utf-8',{fatal:true}).decode(content);
+      document.open();
+      document.write(html);
+      document.close();
+    } catch (error) {
+      button.disabled = false;
+      status.textContent = error.message === 'key' || error.name === 'OperationError'
+        ? '密钥不匹配，请重新打开完整链接或检查密钥。' : '课程加载失败，请检查网络，然后重试。';
+    }
+  }
+  form.addEventListener('submit', event => { event.preventDefault(); openCourse(field.value); });
+  if (incoming || cached) openCourse(incoming || cached);
+})();
+</script>
+</body>
+</html>
