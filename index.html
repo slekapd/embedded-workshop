@@ -46,7 +46,7 @@
       if (!/^[A-Za-z0-9_-]{43}$/.test(key)) throw new Error('key');
       const bytes = Uint8Array.from(atob(key.replace(/-/g,'+').replace(/_/g,'/') + '='), char => char.charCodeAt(0));
       status.textContent = '正在打开课程…';
-      const asset = await fetch('./course-3c85de47a0c9956b.bin');
+      const asset = await fetch('./course-3505a8242407d9e6.bin');
       if (!asset.ok) throw new Error('network');
       const payload = new Uint8Array(await asset.arrayBuffer());
       const secret = await crypto.subtle.importKey('raw',bytes,'AES-GCM',false,['decrypt']);
